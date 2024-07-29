@@ -1,11 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const mongoURI = process.env.MONGODB_URI;
-const updatedURI = mongoURI.replace('mongodb://', 'mongodb+srv://').split(',')[0];
+const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(express.json());
+
+const mongoURI = process.env.MONGODB_URI;
+const updatedURI = mongoURI.replace('mongodb://', 'mongodb+srv://').split(',')[0];
 
 mongoose.connect(updatedURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB'))
@@ -137,6 +139,7 @@ Provide in-depth explanations for each section, using technical language appropr
         res.status(500).json({ error: 'Error generating technical aspects document' });
     }
 });
+
 
 app.get('/api/generate-lifecycle/:id', async (req, res) => {
     try {
