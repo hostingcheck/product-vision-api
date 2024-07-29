@@ -1,0 +1,14 @@
+{
+  "name": "product-vision-api",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.12.3",
+    "dotenv": "^8.2.0",
+    "@google/generative-ai": "^0.1.0"
+  }
+}
