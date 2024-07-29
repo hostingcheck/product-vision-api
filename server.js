@@ -1,12 +1,13 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
+const mongoURI = process.env.MONGODB_URI;
+const updatedURI = mongoURI.replace('mongodb://', 'mongodb+srv://').split(',')[0];
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(express.json());
 
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(updatedURI, { useNewUrlParser: true, useUnifiedTopology: true })
     .then(() => console.log('Connected to MongoDB'))
     .catch(err => console.error('MongoDB connection error:', err));
 
