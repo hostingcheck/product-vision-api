@@ -743,7 +743,7 @@ async function generateDocument(userInputId, documentType) {
         userInputId: userInput._id,
         content: content,
         domain: userInput.domain,
-        type: documentType
+        
     });
     await document.save();
 
