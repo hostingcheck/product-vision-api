@@ -32,7 +32,8 @@ const DocumentSchema = new mongoose.Schema({
 const UserInput = mongoose.model('UserInput', UserInputSchema);
 const GeneratedDocument = mongoose.model('GeneratedDocument', DocumentSchema);
 
-async function generateDocument(prompt) {
+// Renamed this function to avoid conflict
+async function generateContent(prompt) {
     const model = genAI.getGenerativeModel({ model: "gemini-pro" });
     const result = await model.generateContent(prompt);
     return result.response.text();
@@ -724,6 +725,7 @@ app.post('/api/user-input', async (req, res) => {
     }
 });
 
+// This function handles prompt construction and database operations
 async function generateDocument(userInputId, documentType) {
     const userInput = await UserInput.findById(userInputId);
     if (!userInput) {
@@ -737,13 +739,14 @@ async function generateDocument(userInputId, documentType) {
 
     let prompt = promptTemplate.replace('[USER_IDEA]', userInput.idea);
 
-    const content = await generateDocument(prompt);
+    // Call the correctly named function
+    const content = await generateContent(prompt);
 
     const document = new GeneratedDocument({
         userInputId: userInput._id,
         content: content,
         domain: userInput.domain,
-        
+        type: documentType // Ensure 'type' is included
     });
     await document.save();
 
@@ -785,7 +788,8 @@ Revision request: ${revisionPrompt}
 
 Please provide a revised version of the document incorporating the requested changes while maintaining the overall structure and completeness of the original document.`;
 
-        const revisedContent = await generateDocument(prompt);
+        // Call the correctly named function
+        const revisedContent = await generateContent(prompt);
 
         document.content = revisedContent;
         await document.save();
