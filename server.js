@@ -2,22 +2,9 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const multer = require('multer');
-const path = require('path');
 
 const app = express();
 app.use(express.json());
-
-// Set up multer for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
 
 const mongoURI = process.env.MONGODB_URI;
 const updatedURI = mongoURI.replace('mongodb://', 'mongodb+srv://').split(',')[0];
@@ -31,7 +18,6 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const UserInputSchema = new mongoose.Schema({
     idea: String,
     domain: String,
-    documentUrls: [String],
     timestamp: { type: Date, default: Date.now }
 });
 
@@ -725,12 +711,11 @@ Provide comprehensive insights into each stage of the AI/robotics product's life
     }
 };
 
-app.post('/api/user-input', upload.array('documents'), async (req, res) => {
+app.post('/api/user-input', async (req, res) => {
     try {
         const { idea, domain } = req.body;
-        const documentUrls = req.files ? req.files.map(file => file.path) : [];
 
-        const userInput = new UserInput({ idea, domain, documentUrls });
+        const userInput = new UserInput({ idea, domain });
         await userInput.save();
 
         res.status(201).json({ message: 'User input saved', id: userInput._id });
@@ -751,10 +736,6 @@ async function generateDocument(userInputId, documentType) {
     }
 
     let prompt = promptTemplate.replace('[USER_IDEA]', userInput.idea);
-
-    if (userInput.documentUrls && userInput.documentUrls.length > 0) {
-        prompt += `\n\nAdditional documents provided by the user: ${userInput.documentUrls.join(", ")}`;
-    }
 
     const content = await generateDocument(prompt);
 
