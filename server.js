@@ -712,6 +712,97 @@ Provide comprehensive insights into each stage of the AI/robotics product's life
     }
 };
 
+const rfpGenerationPrompt = `Based on the following three comprehensive documents from a project, create a detailed Request for Proposal (RFP) document.
+
+Requirements Document:
+[REQUIREMENTS_CONTENT]
+
+Technical Design Document:
+[TECHNICAL_CONTENT]
+
+Project Lifecycle Document:
+[LIFECYCLE_CONTENT]
+
+Original Project Idea:
+[USER_IDEA]
+
+Project Domain: [DOMAIN]
+
+Create a professional and comprehensive RFP that synthesizes the key information from all three documents. The RFP should include:
+
+1. Executive Summary
+   - Clear project overview and objectives derived from the requirements document
+   - Key deliverables identified across all three documents
+   - High-level timeline based on the lifecycle document
+   - Estimated budget considerations
+
+2. Background Information
+   - Project context and business need
+   - Current situation analysis
+   - Strategic objectives and expected outcomes
+
+3. Detailed Requirements
+   - Functional requirements (from requirements document)
+   - Technical specifications (from technical design)
+   - Performance requirements
+   - Integration requirements
+   - Security and compliance needs
+
+4. Scope of Work
+   - Project phases from the lifecycle document
+   - Specific deliverables for each phase
+   - Implementation methodology
+   - Quality assurance and testing requirements
+   - Acceptance criteria
+
+5. Technical Requirements
+   - System architecture requirements
+   - Technology stack preferences
+   - Infrastructure requirements
+   - Integration requirements
+   - Security requirements
+   - Performance specifications
+
+6. Vendor Requirements
+   - Required technical capabilities
+   - Experience and expertise requirements
+   - Resource requirements
+   - Relevant certifications or qualifications
+
+7. Project Management Requirements
+   - Project management methodology
+   - Reporting requirements
+   - Communication expectations
+   - Risk management approach
+   - Change management requirements
+
+8. Timeline and Milestones
+   - Project schedule
+   - Key milestones
+   - Delivery deadlines
+   - Review and approval periods
+
+9. Evaluation Criteria
+   - Technical evaluation criteria
+   - Commercial evaluation criteria
+   - Vendor qualification requirements
+   - Scoring methodology
+
+10. Proposal Requirements
+    - Required proposal format and sections
+    - Submission timeline and process
+    - Required documentation and certifications
+    - Contact information and submission details
+
+11. Terms and Conditions
+    - Legal requirements
+    - Intellectual property rights
+    - Payment terms and conditions
+    - Service level agreements
+    - Contract terms
+
+Please maintain a professional tone throughout the document and ensure that all critical aspects from the original documents are appropriately reflected in the RFP. The final document should be cohesive and well-structured, making it easy for potential vendors to understand the project requirements and submit appropriate proposals.`;
+
 app.post('/api/user-input', async (req, res) => {
     try {
         const { idea, domain } = req.body;
@@ -797,6 +888,94 @@ Please provide a revised version of the document incorporating the requested cha
         res.json({ document: revisedContent });
     } catch (error) {
         res.status(500).json({ error: 'Error revising document' });
+    }
+});
+
+app.post('/api/generate-rfp/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Fetch the original user input
+        const userInput = await UserInput.findById(id);
+        if (!userInput) {
+            return res.status(404).json({ error: 'User input not found' });
+        }
+
+        // Fetch all three documents for this user input
+        const documents = await GeneratedDocument.find({ 
+            userInputId: id,
+            type: { $in: ['requirements', 'technical', 'lifecycle'] }
+        });
+
+        // Create a map of document types to their content
+        const documentMap = documents.reduce((map, doc) => {
+            map[doc.type] = doc.content;
+            return map;
+        }, {});
+
+        // Verify we have all required documents
+        if (!documentMap.requirements || !documentMap.technical || !documentMap.lifecycle) {
+            return res.status(400).json({ 
+                error: 'All three documents (requirements, technical, and lifecycle) must be generated before creating an RFP' 
+            });
+        }
+
+        // Replace placeholders in the template
+        let prompt = rfpGenerationPrompt
+            .replace('[REQUIREMENTS_CONTENT]', documentMap.requirements)
+            .replace('[TECHNICAL_CONTENT]', documentMap.technical)
+            .replace('[LIFECYCLE_CONTENT]', documentMap.lifecycle)
+            .replace('[USER_IDEA]', userInput.idea)
+            .replace('[DOMAIN]', userInput.domain);
+
+        // Generate the RFP document
+        const rfpContent = await generateContent(prompt);
+
+        // Save the RFP as a new document
+        const rfpDocument = new GeneratedDocument({
+            userInputId: userInput._id,
+            content: rfpContent,
+            domain: userInput.domain,
+            type: 'rfp'
+        });
+        await rfpDocument.save();
+
+        res.json({ 
+            message: 'RFP generated successfully',
+            document: rfpContent 
+        });
+
+    } catch (error) {
+        console.error('Error generating RFP:', error);
+        res.status(500).json({ 
+            error: 'Error generating RFP',
+            details: error.message 
+        });
+    }
+});
+
+// Add endpoint to check document status
+app.get('/api/document-status/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // Fetch all documents for this user input
+        const documents = await GeneratedDocument.find({ userInputId: id });
+        
+        // Create a status object showing which documents exist
+        const status = {
+            requirements: documents.some(doc => doc.type === 'requirements'),
+            technical: documents.some(doc => doc.type === 'technical'),
+            lifecycle: documents.some(doc => doc.type === 'lifecycle'),
+            rfp: documents.some(doc => doc.type === 'rfp')
+        };
+        
+        // Calculate if RFP can be generated
+        status.canGenerateRfp = status.requirements && status.technical && status.lifecycle && !status.rfp;
+        
+        res.json({ status });
+    } catch (error) {
+        res.status(500).json({ error: 'Error checking document status' });
     }
 });
 
